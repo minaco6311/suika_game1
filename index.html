@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ぽよぽよフルーツシンカ！かわいさ満点スイカゲーム</title>
+  <!-- Matter.js 物理エンジン -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <!-- Google Fonts: 英語と日本語の丸みのあるフォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&family=Quicksand:wght@600;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #FFF3F5;
+      --panel-bg: #FFFFFF;
+      --text-color: #5D4347;
+      --primary-color: #FF7B93;
+      --accent-color: #FFB347;
+      --border-color: #FFE0E6;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-color);
+      font-family: 'M PLUS Rounded 1c', 'Quicksand', sans-serif;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ゲームコンテナ */
+    #game-container {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
+      height: 100%;
+      max-height: 850px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
+    }
+
+    /* ヘッダーエリア */
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 0 5px;
+    }
+
+    .logo {
+      font-weight: 900;
+      font-size: 20px;
+      color: var(--primary-color);
+      text-shadow: 2px 2px 0px #FFF;
+      display: flex;
+      flex-direction: column;
+    }
+    .logo span {
+      font-size: 11px;
+      color: #9E7D82;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+    }
+
+    .score-board {
+      display: flex;
+      gap: 10px;
+    }
+
+    .score-box {
+      background: var(--panel-bg);
+      border: 3px solid var(--border-color);
+      border-radius: 16px;
+      padding: 6px 14px;
+      text-align: center;
+      box-shadow: 0 4px 0px var(--border-color);
+      min-width: 85px;
+    }
+
+    .score-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #A88F93;
+    }
+
+    .score-value {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--text-color);
+    }
+
+    /* メインゲームプレイエリア */
+    #canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 400 / 580; /* 比率を固定 */
+      background: var(--panel-bg);
+      border: 6px solid #FFD3DC;
+      border-radius: 28px;
+      box-shadow: 0 10px 0px #FFC2CE, 0 12px 24px rgba(255, 123, 147, 0.15);
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* フローティングプレビュー */
+    #next-preview-box {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 60px;
+      height: 75px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 3px solid #FFD3DC;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+      pointer-events: none;
+      z-index: 5;
+    }
+    #next-preview-box span {
+      font-size: 8px;
+      font-weight: 800;
+      color: #A88F93;
+      margin-bottom: 2px;
+    }
+    #next-canvas {
+      width: 40px;
+      height: 40px;
+    }
+
+    /* ミュート＆リスタートボタン */
+    .controls {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+    }
+    .btn-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 3px solid #FFD3DC;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 0px #FFD3DC;
+      transition: all 0.1s;
+    }
+    .btn-circle:active {
+      transform: translateY(3px);
+      box-shadow: 0 0px 0px #FFD3DC;
+    }
+    .btn-circle svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--text-color);
+    }
+
+    /* シンカ図（進化ガイド） */
+    #evolution-guide {
+      width: 100%;
+      background: var(--panel-bg);
+      border: 3px solid var(--border-color);
+      border-radius: 20px;
+      padding: 8px 10px;
+      margin-top: 12px;
+      box-shadow: 0 4px 0px var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .guide-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: #9E7D82;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .guide-title svg {
+      width: 12px;
+      height: 12px;
+      fill: #FF7B93;
+    }
+    .guide-list {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      overflow-x: auto;
+      padding: 2px 0;
+      scrollbar-width: none;
+    }
+    .guide-list::-webkit-scrollbar {
+      display: none;
+    }
+    .guide-item {
+      display: flex;
+      align-items: center;
+    }
+    .guide-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #FFF;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .guide-arrow {
+      font-size: 9px;
+      color: #FFC2CE;
+      margin: 0 2px;
+      font-weight: 900;
+    }
+
+    /* モーダル表示 */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(93, 67, 71, 0.4);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      border-radius: 22px;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 320px;
+      padding: 30px 24px;
+      text-align: center;
+      border: 6px solid #FFD3DC;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--primary-color);
+      margin-bottom: 12px;
+    }
+
+    .modal-body {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #7A5F63;
+      margin-bottom: 24px;
+    }
+
+    .btn-main {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      font-size: 16px;
+      font-weight: 900;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 0px #E0536C;
+      transition: all 0.1s;
+      width: 100%;
+    }
+    .btn-main:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0px #E0536C;
+    }
+
+    /* デッドライン警告テキスト */
+    #warning-badge {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #FF4D6D;
+      color: white;
+      font-weight: 900;
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      box-shadow: 0 3px 0 #D32F4F;
+      animation: pulse 1s infinite alternate;
+      z-index: 10;
+      display: none;
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, 0) scale(1); }
+      100% { transform: translate(-50%, 0) scale(1.08); }
+    }
+
+    .sub-info {
+      font-size: 12px;
+      color: #9E7D82;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    
+    <header>
+      <div class="logo">
+        ぽよぽよフルーツ<span>FRUIT SYNCA GAME</span>
+      </div>
+      <div class="score-board">
+        <div class="score-box">
+          <div class="score-label">SCORE</div>
+          <div id="score" class="score-value">0</div>
+        </div>
+        <div class="score-box">
+          <div class="score-label">BEST</div>
+          <div id="best-score" class="score-value">0</div>
+        </div>
+      </div>
+    </header>
+
+    <div id="canvas-wrapper">
+      <!-- 画面内コントロール -->
+      <div class="controls">
+        <button class="btn-circle" id="btn-restart" title="やりなおす">
+          <svg viewBox="0 0 24 24">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+        </button>
+        <button class="btn-circle" id="btn-sound" title="おと ON/OFF">
+          <svg id="sound-icon" viewBox="0 0 24 24">
+            <!-- スピーカーアイコン (デフォルトはON) -->
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- NEXTプレビュー -->
+      <div id="next-preview-box">
+        <span>つぎ</span>
+        <canvas id="next-canvas" width="80" height="80"></canvas>
+      </div>
+
+      <!-- 警告バッジ -->
+      <div id="warning-badge">あぶない！</div>
+
+      <!-- メイン描画用キャンバス -->
+      <canvas id="game-canvas"></canvas>
+
+      <!-- スタートモーダル -->
+      <div class="modal-overlay" id="start-modal">
+        <div class="modal-content">
+          <h2 class="modal-title">ぽよフルシンカ！</h2>
+          <div class="modal-body">
+            おなじフルーツ同士をくっつけると、ひとまわり大きなフルーツに進化するよ！<br><br>
+            いっぱいくっつけて、いちばん大きな<b>「スイカ」</b>を目指そう！<br>
+            上のおとし穴からあふれるとゲームオーバーだよ。
+          </div>
+          <button class="btn-main" id="btn-start">あそぶ！</button>
+        </div>
+      </div>
+
+      <!-- ゲームオーバーモーダル -->
+      <div class="modal-overlay" id="gameover-modal" style="display: none;">
+        <div class="modal-content">
+          <h2 class="modal-title" style="color: #FF4D6D;">がめおーばー</h2>
+          <div class="modal-body">
+            フルーツがあふれちゃった！<br><br>
+            今回のスコア:<br>
+            <span id="final-score" style="font-size: 32px; font-weight: 900; color: #5D4347;">0</span> 点
+          </div>
+          <button class="btn-main" id="btn-retry">もう一回あそぶ</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 進化ガイド -->
+    <div id="evolution-guide">
+      <div class="guide-title">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        フルーツのシンカ順
+      </div>
+      <div class="guide-list" id="guide-list">
+        <!-- JSで自動的に描画アイテムを流し込む -->
+      </div>
+    </div>
+
+    <div class="sub-info">左右にスライドして、タップ／はなすと落とせるよ</div>
+
+  </div>
+
+  <script>
+    // --- 音声生成エンジン (Web Audio API) ---
+    class SoundEffects {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+
+      playDrop() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        // 落下をイメージしたスイープ音
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+      }
+
+      playMerge(scaleIndex) {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'triangle';
+        // フルーツの大きさに合わせてピッチを変える（大きいほど低音ぽよん）
+        const baseFreq = Math.max(500 - (scaleIndex * 35), 180);
+        
+        osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.6, this.ctx.currentTime + 0.12);
+
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+      }
+
+      playGameOver() {
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const notes = [200, 150, 100];
+        notes.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now + i * 0.15);
+          gain.gain.setValueAtTime(0.1, now + i * 0.15);
+          gain.gain.linearRampToValueAtTime(0.01, now + i * 0.15 + 0.14);
+
+          osc.start(now + i * 0.15);
+          osc.stop(now + i * 0.15 + 0.15);
+        });
+      }
+
+      playUi() {
+        if (this.muted) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.05);
+
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+    }
+
+    const sound = new SoundEffects();
+
+    // --- フルーツの定義一覧 ---
+    // radius: Matter.js用
+    // color: ベクター描画用の基礎色
+    // name: 識別用
+    const FRUIT_TYPES = [
+      { id: 0, name: 'チェリー', radius: 15, score: 1,  color: '#FF416C', secondary: '#FF4B2B' },
+      { id: 1, name: 'いちご',   radius: 22, score: 3,  color: '#FF4D6D', secondary: '#C9184A' },
+      { id: 2, name: 'ぶどう',   radius: 30, score: 6,  color: '#9D4EDD', secondary: '#7B2CBF' },
+      { id: 3, name: 'デコポン', radius: 36, score: 10, color: '#FF9E00', secondary: '#E85D04' },
+      { id: 4, name: 'かき',     radius: 44, score: 15, color: '#FF6200', secondary: '#D03B00' },
+      { id: 5, name: 'りんご',   radius: 52, score: 21, color: '#EF233C', secondary: '#D90429' },
+      { id: 6, name: 'なし',     radius: 60, score: 28, color: '#E9D8A6', secondary: '#EE9B00' },
+      { id: 7, name: 'もも',     radius: 70, score: 36, color: '#FFB5A7', secondary: '#FCD5CE' },
+      { id: 8, name: 'パイン',   radius: 82, score: 45, color: '#FFD166', secondary: '#F1A208' },
+      { id: 9, name: 'メロン',   radius: 96, score: 55, color: '#99D98C', secondary: '#52B788' },
+      { id: 10, name: 'スイカ',  radius: 115, score: 66, color: '#2B9348', secondary: '#1A6130' }
+    ];
+
+    // --- Matter.js モジュール ---
+    const { Engine, World, Bodies, Body, Composite, Events } = Matter;
+
+    // --- アプリケーション状態 ---
+    let engine;
+    let world;
+    let canvas, ctx;
+    let nextCanvas, nextCtx;
+    
+    let score = 0;
+    let bestScore = 0;
+    let isGameOver = false;
+    let gameStarted = false;
+    
+    let activeFruit = null;
+    let nextFruitTypeIndex = 0;
+    let spawnCooldown = false;
+    
+    let width = 400;
+    let height = 580;
+    const warningLineY = 120; // 警告ライン
+    let warningTimer = 0; // ラインを超えている時間カウンタ
+    let showWarningEffect = false;
+
+    // パーティクル管理用配列
+    let particles = [];
+    // マージ時のポップアップテキスト
+    let popups = [];
+
+    // --- 各種 DOM 要素 ---
+    const scoreVal = document.getElementById('score');
+    const bestScoreVal = document.getElementById('best-score');
+    const startModal = document.getElementById('start-modal');
+    const gameoverModal = document.getElementById('gameover-modal');
+    const warningBadge = document.getElementById('warning-badge');
+    const btnStart = document.getElementById('btn-start');
+    const btnRetry = document.getElementById('btn-retry');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnSound = document.getElementById('btn-sound');
+    const soundIcon = document.getElementById('sound-icon');
+    const finalScore = document.getElementById('final-score');
+    const guideList = document.getElementById('guide-list');
+
+    // ベストスコアの読み込み
+    if (localStorage.getItem('poyo_best_score')) {
+      bestScore = parseInt(localStorage.getItem('poyo_best_score'), 10);
+      bestScoreVal.textContent = bestScore;
+    }
+
+    // --- 初期化 ---
+    function init() {
+      // メインキャンバス初期化
+      canvas = document.getElementById('game-canvas');
+      ctx = canvas.getContext('2d');
+      resizeCanvas();
+
+      // NEXT予告用キャンバス初期化
+      nextCanvas = document.getElementById('next-canvas');
+      nextCtx = nextCanvas.getContext('2d');
+
+      // 進化ガイドの描画
+      buildEvolutionGuide();
+
+      // Matter.js エンジンの作成
+      engine = Engine.create({
+        gravity: { y: 1.1 } // ぽよぽよ感を高めるための少し強めの重力
+      });
+      world = engine.world;
+
+      // 容器の作成
+      const wallOptions = { isStatic: true, friction: 0.1, restitution: 0.4 };
+      const ground = Bodies.rectangle(width / 2, height + 20, width + 100, 50, wallOptions);
+      const leftWall = Bodies.rectangle(-20, height / 2, 50, height * 2, wallOptions);
+      const rightWall = Bodies.rectangle(width + 20, height / 2, 50, height * 2, wallOptions);
+
+      // 容器をワールドに追加
+      World.add(world, [ground, leftWall, rightWall]);
+
+      // 衝突検知イベントの設定
+      Events.on(engine, 'collisionStart', handleCollision);
+
+      // イベントリスナー登録
+      setupEventListeners();
+
+      // ランダムに最初の次のフルーツを決定
+      nextFruitTypeIndex = getRandomSpawnerFruitIndex();
+      drawNextPreview();
+
+      // ループ起動
+      requestAnimationFrame(gameLoop);
+    }
+
+    // キャンバスのリサイズ対応
+    function resizeCanvas() {
+      // CSSによるアス比固定を維持しつつ、実サイズを設定
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    // 進化ガイドをHTMLに動的生成
+    function buildEvolutionGuide() {
+      guideList.innerHTML = '';
+      FRUIT_TYPES.forEach((type, index) => {
+        const item = document.createElement('div');
+        item.className = 'guide-item';
+
+        // かわいい丸を描画する
+        const circle = document.createElement('div');
+        circle.className = 'guide-circle';
+        circle.style.backgroundColor = type.color;
+        circle.style.borderColor = type.secondary;
+        circle.style.width = `${Math.min(20 + index * 1.5, 36)}px`;
+        circle.style.height = `${Math.min(20 + index * 1.5, 36)}px`;
+        circle.title = type.name;
+
+        item.appendChild(circle);
+
+        if (index < FRUIT_TYPES.length - 1) {
+          const arrow = document.createElement('span');
+          arrow.className = 'guide-arrow';
+          arrow.innerHTML = '▶';
+          item.appendChild(arrow);
+        }
+        guideList.appendChild(item);
+      });
+    }
+
+    // スポナーで出現する初期フルーツ（さくらんぼ、いちご、ぶどう、デコポン、かき までの小さな5種）
+    function getRandomSpawnerFruitIndex() {
+      return Math.floor(Math.random() * 5);
+    }
+
+    // NEXTプレビューの描画
+    function drawNextPreview() {
+      nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+      const type = FRUIT_TYPES[nextFruitTypeIndex];
+      const cx = nextCanvas.width / 2;
+      const cy = nextCanvas.height / 2;
+      
+      // プレビュー用にスケーリングして描画
+      const scaleFactor = Math.min(22 / type.radius, 1.0);
+      drawFruitGraphics(nextCtx, cx, cy, type.radius * scaleFactor, type, { 
+        face: 'normal', 
+        blinkTimer: 50,
+        age: 100 
+      }, 0);
+    }
+
+    // --- フルーツの投入準備 (スポナー) ---
+    function prepareActiveFruit() {
+      if (isGameOver) return;
+      
+      const typeIndex = nextFruitTypeIndex;
+      const type = FRUIT_TYPES[typeIndex];
+
+      // スポナー用にMatter.jsのBodyを物理無効・衝突無効（センサー）として生成
+      const x = width / 2;
+      const y = 80;
+
+      activeFruit = Bodies.circle(x, y, type.radius, {
+        isStatic: true,
+        isSensor: true,
+        label: 'active-fruit'
+      });
+
+      // 描画用のカスタムパラメータを付与
+      activeFruit.customData = {
+        typeIndex: typeIndex,
+        face: 'normal',
+        blinkTimer: Math.random() * 200 + 100,
+        age: 0,
+        isDropped: false,
+        dropTime: 0,
+        mergeAnimScale: 1.0,
+        hasBounced: false
+      };
+
+      World.add(world, activeFruit);
+
+      // 次のフルーツを決めてプレビュー更新
+      nextFruitTypeIndex = getRandomSpawnerFruitIndex();
+      drawNextPreview();
+    }
+
+    // アクティブなフルーツの横移動
+    function moveActiveFruit(clientX) {
+      if (!activeFruit || activeFruit.customData.isDropped) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = width / rect.width;
+      let targetX = (clientX - rect.left) * scaleX;
+
+      // 壁からはみ出さないように制限
+      const radius = FRUIT_TYPES[activeFruit.customData.typeIndex].radius;
+      const minX = radius + 6;
+      const maxX = width - radius - 6;
+      if (targetX < minX) targetX = minX;
+      if (targetX > maxX) targetX = maxX;
+
+      Body.setPosition(activeFruit, { x: targetX, y: activeFruit.position.y });
+    }
+
+    // フルーツの落下
+    function dropActiveFruit() {
+      if (!activeFruit || activeFruit.customData.isDropped || spawnCooldown) return;
+
+      sound.playDrop();
+
+      // 物理法則を有効化
+      Body.setStatic(activeFruit, false);
+      activeFruit.isSensor = false;
+      activeFruit.customData.isDropped = true;
+      activeFruit.customData.dropTime = Date.now();
+      activeFruit.label = 'fruit';
+
+      // 少しだけ弾みやすいぽよっとした物理設定を付与
+      activeFruit.restitution = 0.25;
+      activeFruit.friction = 0.05;
+
+      // 投げ込み完了後、クールダウンを挟んで次のフルーツを装填
+      spawnCooldown = true;
+      const currentDropped = activeFruit;
+      activeFruit = null;
+
+      setTimeout(() => {
+        spawnCooldown = false;
+        prepareActiveFruit();
+      }, 650);
+    }
+
+    // --- 衝突と合体(シンカ)の処理 ---
+    function handleCollision(event) {
+      const pairs = event.pairs;
+      
+      for (let i = 0; i < pairs.length; i++) {
+        const pair = pairs[i];
+        const bodyA = pair.bodyA;
+        const bodyB = pair.bodyB;
+
+        // 壁との衝突時はポヨンと少し跳ね返る音や、落ちた瞬間の接触表情変化を実装
+        if (bodyA.label === 'fruit' && bodyB.label === 'fruit') {
+          const dataA = bodyA.customData;
+          const dataB = bodyB.customData;
+
+          // 同じフルーツ同士の衝突かチェック
+          if (dataA && dataB && dataA.typeIndex === dataB.typeIndex && !bodyA.isMarkedForDelete && !bodyB.isMarkedForDelete) {
+            
+            // すでに最大進化の「スイカ」同士なら、派手に破裂させてスコアボーナスにするか、あるいは合体させない。
+            // ここではスイカ（最大ID=10）の場合は、消滅して大量得点を獲得できるようにします！
+            const currentIdx = dataA.typeIndex;
+            const centerPoint = {
+              x: (bodyA.position.x + bodyB.position.x) / 2,
+              y: (bodyA.position.y + bodyB.position.y) / 2
+            };
+
+            bodyA.isMarkedForDelete = true;
+            bodyB.isMarkedForDelete = true;
+
+            if (currentIdx < FRUIT_TYPES.length - 1) {
+              // ひとつ上のランクへ進化
+              const nextIdx = currentIdx + 1;
+              const nextType = FRUIT_TYPES[nextIdx];
+              
+              // マージサウンド
+              sound.playMerge(nextIdx);
+
+              // スコア追加
+              addScore(nextType.score);
+
+              // 新しいフルーツを生成
+              setTimeout(() => {
+                const evolvedFruit = Bodies.circle(centerPoint.x, centerPoint.y, nextType.radius, {
+                  restitution: 0.28,
+                  friction: 0.05,
+                  label: 'fruit'
+                });
+
+                evolvedFruit.customData = {
+                  typeIndex: nextIdx,
+                  face: 'happy', // 進化したてはにっこり
+                  faceTimer: 60, // 60フレーム間はにっこり顔
+                  blinkTimer: Math.random() * 200 + 100,
+                  age: 0,
+                  isDropped: true,
+                  dropTime: Date.now(),
+                  mergeAnimScale: 0.1, // 0.1から大きく弾むスケールアニメーション
+                  hasBounced: true
+                };
+
+                World.add(world, evolvedFruit);
+
+                // 気持ちいいパーティクル発生
+                spawnJuiceParticles(centerPoint.x, centerPoint.y, nextType.color, 12);
+                // フローティングスコアテキスト表示
+                spawnScorePopup(centerPoint.x, centerPoint.y, `+${nextType.score}`);
+
+              }, 10);
+            } else {
+              // スイカ同士の融合：超ハッピー演出！
+              sound.playMerge(12);
+              addScore(500);
+              spawnJuiceParticles(centerPoint.x, centerPoint.y, '#FF0000', 40);
+              spawnScorePopup(centerPoint.x, centerPoint.y, `ULTIMATE WATERMELON! +500`);
+            }
+          }
+        }
+      }
+    }
+
+    // スコア追加
+    function addScore(pts) {
+      score += pts;
+      scoreVal.textContent = score;
+      if (score > bestScore) {
+        bestScore = score;
+        bestScoreVal.textContent = bestScore;
+        localStorage.setItem('poyo_best_score', bestScore);
+      }
+    }
+
+    // --- 特殊エフェクト: パーティクルとポップアップ ---
+    function spawnJuiceParticles(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 3;
+        particles.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - Math.random() * 2, // 若干上方向に飛ぶ
+          radius: Math.random() * 5 + 4,
+          color: color,
+          alpha: 1.0,
+          decay: Math.random() * 0.03 + 0.02
+        });
+      }
+    }
+
+    function spawnScorePopup(x, y, text) {
+      popups.push({
+        x: x,
+        y: y,
+        vy: -2,
+        text: text,
+        alpha: 1.0,
+        scale: 0.8
+      });
+    }
+
+    // --- イベントリスナーの設定 ---
+    function setupEventListeners() {
+      const wrapper = document.getElementById('canvas-wrapper');
+
+      // PC操作 (マウスムーブ、マウスクリック)
+      wrapper.addEventListener('mousemove', (e) => {
+        if (!gameStarted || isGameOver) return;
+        moveActiveFruit(e.clientX);
+      });
+
+      wrapper.addEventListener('mousedown', (e) => {
+        if (!gameStarted || isGameOver) return;
+        moveActiveFruit(e.clientX);
+      });
+
+      wrapper.addEventListener('mouseup', () => {
+        if (!gameStarted || isGameOver) return;
+        dropActiveFruit();
+      });
+
+      // モバイル操作 (タッチ操作)
+      wrapper.addEventListener('touchmove', (e) => {
+        if (!gameStarted || isGameOver || e.touches.length === 0) return;
+        moveActiveFruit(e.touches[0].clientX);
+      }, { passive: true });
+
+      wrapper.addEventListener('touchstart', (e) => {
+        if (!gameStarted || isGameOver || e.touches.length === 0) return;
+        moveActiveFruit(e.touches[0].clientX);
+      }, { passive: true });
+
+      wrapper.addEventListener('touchend', () => {
+        if (!gameStarted || isGameOver) return;
+        dropActiveFruit();
+      });
+
+      // スタートボタン
+      btnStart.addEventListener('click', () => {
+        sound.playUi();
+        startModal.style.display = 'none';
+        gameStarted = true;
+        prepareActiveFruit();
+      });
+
+      // もう一回あそぶボタン
+      btnRetry.addEventListener('click', () => {
+        sound.playUi();
+        gameoverModal.style.display = 'none';
+        resetGame();
+      });
+
+      // ゲーム中リスタート
+      btnRestart.addEventListener('click', () => {
+        sound.playUi();
+        if (confirm('ゲームをやりなおしますか？')) {
+          resetGame();
+        }
+      });
+
+      // ミュートボタン
+      btnSound.addEventListener('click', () => {
+        sound.muted = !sound.muted;
+        sound.playUi();
+        if (sound.muted) {
+          soundIcon.innerHTML = `
+            <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+          `;
+        } else {
+          soundIcon.innerHTML = `
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          `;
+        }
+      });
+    }
+
+    // ゲームのリセット
+    function resetGame() {
+      // ワールド内のフルーツを全クリア
+      const allBodies = Composite.allBodies(world);
+      const fruitsToRemove = allBodies.filter(b => b.label === 'fruit' || b.label === 'active-fruit');
+      fruitsToRemove.forEach(b => World.remove(world, b));
+
+      score = 0;
+      scoreVal.textContent = 0;
+      isGameOver = false;
+      activeFruit = null;
+      warningTimer = 0;
+      showWarningEffect = false;
+      warningBadge.style.display = 'none';
+      particles = [];
+      popups = [];
+
+      prepareActiveFruit();
+    }
+
+    // --- メインゲームループ ---
+    function gameLoop(timestamp) {
+      if (gameStarted && !isGameOver) {
+        // 物理エンジンの更新
+        Engine.update(engine, 1000 / 60);
+      }
+
+      // 描画リセット
+      ctx.clearRect(0, 0, width, height);
+
+      // 背景のうっすらストライプ模様を描画してポップさを演出
+      drawBackgroundPattern();
+
+      // デッドライン警告線（フルーツが貯まると危険なライン）
+      drawWarningLine();
+
+      // マークされた不要なフルーツボディを削除
+      const allBodies = Composite.allBodies(world);
+      allBodies.forEach(body => {
+        if (body.isMarkedForDelete) {
+          World.remove(world, body);
+        }
+      });
+
+      // 有効なフルーツたちの描画＆状態更新
+      let anyFruitOverLimit = false;
+
+      allBodies.forEach(body => {
+        if (body.label === 'fruit' || body.label === 'active-fruit') {
+          const custom = body.customData;
+          if (!custom) return;
+
+          custom.age += 1;
+
+          // 警告判定: 落下してから1.5秒以上経過し、警告ラインより上に滞在しているか
+          if (custom.isDropped && custom.age > 90) {
+            if (body.position.y - body.circleRadius < warningLineY) {
+              anyFruitOverLimit = true;
+            }
+          }
+
+          // 進化直後のぷるるんポップアップ拡大アニメ
+          if (custom.mergeAnimScale < 1.0) {
+            custom.mergeAnimScale += 0.12;
+            if (custom.mergeAnimScale > 1.0) custom.mergeAnimScale = 1.0;
+          }
+
+          // 表情のタイマー切り替え
+          if (custom.faceTimer && custom.faceTimer > 0) {
+            custom.faceTimer--;
+            if (custom.faceTimer === 0) {
+              custom.face = 'normal';
+            }
+          }
+
+          // まばたき制御
+          custom.blinkTimer--;
+          if (custom.blinkTimer <= 0) {
+            custom.blinkTimer = Math.random() * 250 + 120; // 次のまばたきまでの間隔
+          }
+
+          // 落下速度に応じた表情（びっくり顔）
+          if (custom.isDropped && custom.face !== 'happy') {
+            const speed = body.speed;
+            if (speed > 8) {
+              custom.face = 'scared';
+            } else if (custom.face === 'scared' && speed < 3) {
+              custom.face = 'normal';
+            }
+          }
+
+          // フルーツ本体を描画
+          const currentRadius = body.circleRadius * custom.mergeAnimScale;
+          const type = FRUIT_TYPES[custom.typeIndex];
+          drawFruitGraphics(ctx, body.position.x, body.position.y, currentRadius, type, custom, body.angle);
+        }
+      });
+
+      // 落下点予測点線の描画（アクティブフルーツが存在する場合）
+      if (activeFruit && !activeFruit.customData.isDropped) {
+        drawPredictionLine();
+      }
+
+      // デッドライン警告管理
+      handleDangerWarning(anyFruitOverLimit);
+
+      // パーティクルの更新＆描画
+      updateAndDrawParticles();
+
+      // フローティングポップアップの更新＆描画
+      updateAndDrawPopups();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // 背景模様
+    function drawBackgroundPattern() {
+      ctx.fillStyle = '#FFF8F9';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = 'rgba(255, 123, 147, 0.04)';
+      ctx.lineWidth = 20;
+      for (let i = -height; i < width; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i + height, height);
+        ctx.stroke();
+      }
+    }
+
+    // 予測線の描画
+    function drawPredictionLine() {
+      ctx.save();
+      ctx.strokeStyle = '#FFC2CE';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 8]);
+      ctx.beginPath();
+      ctx.moveTo(activeFruit.position.x, activeFruit.position.y);
+      ctx.lineTo(activeFruit.position.x, height);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 警告線の描画
+    function drawWarningLine() {
+      ctx.save();
+      // 時間で点滅させる
+      const flash = Math.sin(Date.now() / 150) * 0.5 + 0.5;
+      ctx.strokeStyle = showWarningEffect ? `rgba(255, 77, 109, ${0.4 + flash * 0.4})` : 'rgba(255, 123, 147, 0.18)';
+      ctx.lineWidth = showWarningEffect ? 4 : 2;
+      ctx.beginPath();
+      ctx.moveTo(10, warningLineY);
+      ctx.lineTo(width - 10, warningLineY);
+      ctx.stroke();
+
+      // 警告点線の下にうっすら危険地帯を明示
+      if (showWarningEffect) {
+        ctx.fillStyle = `rgba(255, 77, 109, ${0.03 + flash * 0.03})`;
+        ctx.fillRect(10, 10, width - 20, warningLineY - 10);
+      }
+      ctx.restore();
+    }
+
+    // あふれ検知＆警告・ゲームオーバー
+    function handleDangerWarning(anyFruitOverLimit) {
+      if (anyFruitOverLimit) {
+        warningTimer++;
+        if (warningTimer > 45) { // 約0.75秒以上あふれてたら赤く警告
+          showWarningEffect = true;
+          warningBadge.style.display = 'block';
+        }
+        if (warningTimer > 180) { // 約3秒あふれ続けたらゲームオーバー
+          triggerGameOver();
+        }
+      } else {
+        warningTimer = 0;
+        showWarningEffect = false;
+        warningBadge.style.display = 'none';
+      }
+    }
+
+    // ゲームオーバー移行
+    function triggerGameOver() {
+      if (isGameOver) return;
+      isGameOver = true;
+      sound.playGameOver();
+      
+      warningBadge.style.display = 'none';
+      finalScore.textContent = score;
+      gameoverModal.style.display = 'flex';
+    }
+
+    // --- 各フルーツのかわいいグラフィック描画関数群 ---
+    // ここで絵文字を一切使わず、1から手描きのベクター表現を仕上げています。
+    function drawFruitGraphics(c, x, y, r, type, custom, angle) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(angle);
+
+      // ふわっとした影
+      c.shadowColor = 'rgba(93, 67, 71, 0.12)';
+      c.shadowBlur = 8;
+      c.shadowOffsetY = 4;
+
+      // くだものの種類別のディテール描画
+      switch(type.id) {
+        case 0: // チェリー
+          drawCherry(c, r, type);
+          break;
+        case 1: // いちご
+          drawStrawberry(c, r, type);
+          break;
+        case 2: // ぶどう
+          drawGrape(c, r, type);
+          break;
+        case 3: // デコポン
+          drawDekopon(c, r, type);
+          break;
+        case 4: // かき
+          drawPersimmon(c, r, type);
+          break;
+        case 5: // りんご
+          drawApple(c, r, type);
+          break;
+        case 6: // なし
+          drawPear(c, r, type);
+          break;
+        case 7: // もも
+          drawPeach(c, r, type);
+          break;
+        case 8: // パイン
+          drawPineapple(c, r, type);
+          break;
+        case 9: // メロン
+          drawMelon(c, r, type);
+          break;
+        case 10: // スイカ
+          drawWatermelon(c, r, type);
+          break;
+      }
+
+      // 顔を描画 (影の影響をリセット)
+      c.shadowColor = 'transparent';
+      c.shadowBlur = 0;
+      c.shadowOffsetY = 0;
+      drawFruitFace(c, r, custom);
+
+      c.restore();
+    }
+
+    // 0: チェリー (双子にすると当たり判定が丸なので少しずれるため、寄り添うツインデザインに偽装)
+    function drawCherry(c, r, type) {
+      const grad = c.createRadialGradient(-r*0.2, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#FF5E62');
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+      
+      // チェリー本体の少し扁平な丸
+      c.beginPath();
+      c.arc(0, r*0.05, r, 0, Math.PI * 2);
+      c.fill();
+
+      // ヘタと軸
+      c.strokeStyle = '#70B443';
+      c.lineWidth = 2.5;
+      c.lineCap = 'round';
+      c.beginPath();
+      // 左の本体から上に伸びるカーブ
+      c.moveTo(0, -r*0.4);
+      c.quadraticCurveTo(r*0.5, -r*1.3, r*0.4, -r*1.5);
+      c.stroke();
+
+      // 葉っぱ
+      c.fillStyle = '#89C158';
+      c.beginPath();
+      c.ellipse(r*0.2, -r*1.1, r*0.3, r*0.15, -Math.PI/6, 0, Math.PI*2);
+      c.fill();
+    }
+
+    // 1: いちご
+    function drawStrawberry(c, r, type) {
+      // 逆しずく型
+      c.fillStyle = type.color;
+      c.beginPath();
+      c.moveTo(0, r);
+      // 右ベジェ
+      c.bezierCurveTo(r*1.1, r*0.6, r*1.1, -r*0.6, 0, -r*0.9);
+      // 左ベジェ
+      c.bezierCurveTo(-r*1.1, -r*0.6, -r*1.1, r*0.6, 0, r);
+      c.fill();
+
+      // つぶつぶ
+      c.fillStyle = '#FFEAA7';
+      const seeds = [
+        {x: -r*0.4, y: -r*0.2}, {x: 0, y: -r*0.4}, {x: r*0.4, y: -r*0.2},
+        {x: -r*0.5, y: r*0.2}, {x: 0, y: r*0.1}, {x: r*0.5, y: r*0.2},
+        {x: -r*0.2, y: r*0.5}, {x: r*0.2, y: r*0.5}
+      ];
+      seeds.forEach(s => {
+        c.beginPath();
+        c.arc(s.x, s.y, r * 0.05, 0, Math.PI*2);
+        c.fill();
+      });
+
+      // ヘタ (ギザギザ葉っぱ)
+      c.fillStyle = '#52B788';
+      c.beginPath();
+      c.moveTo(0, -r*0.7);
+      c.lineTo(-r*0.7, -r*0.9);
+      c.lineTo(-r*0.3, -r*0.7);
+      c.lineTo(0, -r*1.1); // 真ん中の長い葉
+      c.lineTo(r*0.3, -r*0.7);
+      c.lineTo(r*0.7, -r*0.9);
+      c.closePath();
+      c.fill();
+    }
+
+    // 2: ぶどう
+    function drawGrape(c, r, type) {
+      // ぶどうは一粒の丸だが、周囲にデコボコをつけることでぶどう感を作る
+      c.fillStyle = type.color;
+      
+      // 周囲のぶどう粒
+      const circles = [
+        {x: -r*0.4, y: -r*0.4, r: r*0.5},
+        {x: r*0.4, y: -r*0.4, r: r*0.5},
+        {x: -r*0.5, y: r*0.1, r: r*0.55},
+        {x: r*0.5, y: r*0.1, r: r*0.55},
+        {x: 0, y: r*0.5, r: r*0.6},
+        {x: 0, y: 0, r: r*0.85} // 中心
+      ];
+      circles.forEach(item => {
+        const grad = c.createRadialGradient(item.x - item.r*0.2, item.y - item.r*0.2, 2, item.x, item.y, item.r);
+        grad.addColorStop(0, '#D69F7E'); // ほんのり艶
+        grad.addColorStop(0.2, type.color);
+        grad.addColorStop(1, type.secondary);
+        c.fillStyle = grad;
+        c.beginPath();
+        c.arc(item.x, item.y, item.r, 0, Math.PI*2);
+        c.fill();
+      });
+
+      // くるくる巻きヒゲ
+      c.strokeStyle = '#99E265';
+      c.lineWidth = 3;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(0, -r*0.8);
+      c.quadraticCurveTo(-r*0.5, -r*1.2, -r*0.2, -r*1.4);
+      c.quadraticCurveTo(r*0.1, -r*1.5, 0, -r*1.1);
+      c.stroke();
+    }
+
+    // 3: デコポン
+    function drawDekopon(c, r, type) {
+      // オレンジのグラデーション
+      const grad = c.createRadialGradient(-r*0.2, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#FFE066');
+      grad.addColorStop(0.3, type.color);
+      grad.addColorStop(1, type.secondary);
+      
+      c.fillStyle = grad;
+      c.beginPath();
+      // デコポンは上にこぶがある
+      c.arc(0, r*0.1, r * 0.95, 0, Math.PI*2);
+      c.fill();
+
+      // こぶ部分の盛り上がり
+      c.beginPath();
+      c.arc(0, -r*0.65, r * 0.38, 0, Math.PI*2);
+      c.fill();
+
+      // 緑の星型ヘタ
+      c.fillStyle = '#40916C';
+      c.beginPath();
+      const hX = 0, hY = -r*0.9;
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * Math.PI * 2) / 5 - Math.PI / 2;
+        const outerX = hX + Math.cos(angle) * (r * 0.15);
+        const outerY = hY + Math.sin(angle) * (r * 0.15);
+        c.lineTo(outerX, outerY);
+        const innerAngle = angle + Math.PI / 5;
+        const innerX = hX + Math.cos(innerAngle) * (r * 0.07);
+        const innerY = hY + Math.sin(innerAngle) * (r * 0.07);
+        c.lineTo(innerX, innerY);
+      }
+      c.closePath();
+      c.fill();
+    }
+
+    // 4: かき (柿)
+    function drawPersimmon(c, r, type) {
+      const grad = c.createRadialGradient(-r*0.1, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#FF9F1C');
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+
+      // 柿のすこし角ばった愛嬌のあるカタチ
+      c.beginPath();
+      const offset = r * 0.1;
+      c.moveTo(-r + offset, -r + offset * 2);
+      c.quadraticCurveTo(0, -r, r - offset, -r + offset * 2);
+      c.quadraticCurveTo(r, 0, r - offset, r - offset);
+      c.quadraticCurveTo(0, r + offset, -r + offset, r - offset);
+      c.quadraticCurveTo(-r, 0, -r + offset, -r + offset * 2);
+      c.closePath();
+      c.fill();
+
+      // 大きな緑のへた
+      c.fillStyle = '#2D6A4F';
+      c.beginPath();
+      c.ellipse(0, -r*0.85, r*0.4, r*0.12, 0, 0, Math.PI*2);
+      c.ellipse(0, -r*0.85, r*0.12, r*0.35, 0, 0, Math.PI*2);
+      c.fill();
+
+      // ヘタの中心の茶色いポッチ
+      c.fillStyle = '#5D4347';
+      c.beginPath();
+      c.arc(0, -r*0.85, r*0.08, 0, Math.PI*2);
+      c.fill();
+    }
+
+    // 5: りんご
+    function drawApple(c, r, type) {
+      const grad = c.createRadialGradient(-r*0.2, -r*0.3, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#FF4D6D');
+      grad.addColorStop(0.4, type.color);
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+
+      // りんごの上部がすこし凹んだまるっこいハート形
+      c.beginPath();
+      c.moveTo(0, -r*0.6);
+      c.bezierCurveTo(r*0.5, -r*1.1, r*1.1, -r*0.5, r, r*0.2);
+      c.bezierCurveTo(r*0.9, r*0.9, r*0.3, r*1.05, 0, r*0.85); // 下部も少しくぼむ
+      c.bezierCurveTo(-r*0.3, r*1.05, -r*0.9, r*0.9, -r, r*0.2);
+      c.bezierCurveTo(-r*1.1, -r*0.5, -r*0.5, -r*1.1, 0, -r*0.6);
+      c.closePath();
+      c.fill();
+
+      // 艶（白ハイライト）
+      c.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      c.beginPath();
+      c.ellipse(-r*0.45, -r*0.4, r*0.25, r*0.12, Math.PI/4, 0, Math.PI*2);
+      c.fill();
+
+      // 枝
+      c.strokeStyle = '#6F4E37';
+      c.lineWidth = 4;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(0, -r*0.7);
+      c.quadraticCurveTo(r*0.2, -r*1.2, r*0.4, -r*1.2);
+      c.stroke();
+
+      // 葉っぱ
+      c.fillStyle = '#74C69D';
+      c.beginPath();
+      c.ellipse(r*0.35, -r*1.05, r*0.25, r*0.12, -Math.PI/6, 0, Math.PI*2);
+      c.fill();
+    }
+
+    // 6: なし (洋梨)
+    function drawPear(c, r, type) {
+      const grad = c.createRadialGradient(-r*0.1, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#F4F1DE');
+      grad.addColorStop(0.5, type.color);
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+
+      // 洋なしのようなひょうたん型
+      c.beginPath();
+      c.moveTo(0, -r*0.9);
+      c.bezierCurveTo(r*0.45, -r*0.9, r*0.45, -r*0.3, r*0.9, r*0.2);
+      c.bezierCurveTo(r*1.1, r*0.7, -r*1.1, r*0.7, -r*0.9, r*0.2);
+      c.bezierCurveTo(-r*0.45, -r*0.3, -r*0.45, -r*0.9, 0, -r*0.9);
+      c.closePath();
+      c.fill();
+
+      // 微細な斑点
+      c.fillStyle = 'rgba(183, 145, 41, 0.15)';
+      const spots = [
+        {x:-r*0.5, y:r*0.3}, {x:r*0.4, y:r*0.4}, {x:-r*0.2, y:r*0.6},
+        {x:r*0.1, y:r*0.2}, {x:-r*0.6, y:-r*0.1}, {x:r*0.5, y:-r*0.1}
+      ];
+      spots.forEach(sp => {
+        c.beginPath();
+        c.arc(sp.x, sp.y, r*0.03, 0, Math.PI*2);
+        c.fill();
+      });
+
+      // 茶色のヘタ
+      c.strokeStyle = '#5D4347';
+      c.lineWidth = 4;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(0, -r*0.9);
+      c.lineTo(-r*0.15, -r*1.2);
+      c.stroke();
+    }
+
+    // 7: もも (桃)
+    function drawPeach(c, r, type) {
+      const grad = c.createRadialGradient(-r*0.2, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#FFF0F5');
+      grad.addColorStop(0.5, type.color);
+      grad.addColorStop(1, '#FF8A9F');
+      c.fillStyle = grad;
+
+      // 桃のキュートなおしり型
+      c.beginPath();
+      c.moveTo(0, r*0.9);
+      c.bezierCurveTo(r*1.1, r*0.8, r*1.1, -r*0.6, 0, -r*0.95);
+      c.bezierCurveTo(-r*1.1, -r*0.6, -r*1.1, r*0.8, 0, r*0.9);
+      c.closePath();
+      c.fill();
+
+      // 桃の縦のすじ
+      c.strokeStyle = 'rgba(255, 100, 130, 0.28)';
+      c.lineWidth = 3.5;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(0, -r*0.95);
+      c.quadraticCurveTo(-r*0.15, 0, 0, r*0.9);
+      c.stroke();
+
+      // 大きな緑の葉っぱ
+      c.fillStyle = '#83C5BE';
+      c.beginPath();
+      c.ellipse(-r*0.5, -r*0.8, r*0.35, r*0.15, Math.PI/5, 0, Math.PI*2);
+      c.fill();
+    }
+
+    // 8: パイン
+    function drawPineapple(c, r, type) {
+      // 楕円
+      const grad = c.createRadialGradient(-r*0.1, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#FFE875');
+      grad.addColorStop(0.7, type.color);
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+
+      c.beginPath();
+      c.ellipse(0, r*0.1, r*0.88, r*0.95, 0, 0, Math.PI*2);
+      c.fill();
+
+      // パインの松ぼっくり模様（ひし形格子）
+      c.strokeStyle = 'rgba(232, 93, 4, 0.22)';
+      c.lineWidth = 3;
+      c.save();
+      // クリップして円内のみに描画
+      c.beginPath();
+      c.ellipse(0, r*0.1, r*0.88, r*0.95, 0, 0, Math.PI*2);
+      c.clip();
+
+      const lineGap = r * 0.35;
+      for (let i = -5; i <= 5; i++) {
+        c.beginPath();
+        c.moveTo(-r * 2 + i * lineGap, -r * 2);
+        c.lineTo(r * 2 + i * lineGap, r * 2);
+        c.stroke();
+
+        c.beginPath();
+        c.moveTo(r * 2 + i * lineGap, -r * 2);
+        c.lineTo(-r * 2 + i * lineGap, r * 2);
+        c.stroke();
+      }
+      c.restore();
+
+      // 特徴的なトゲトゲ冠葉（王冠）
+      c.fillStyle = '#40916C';
+      c.beginPath();
+      // 左の葉
+      c.moveTo(-r*0.5, -r*0.6);
+      c.quadraticCurveTo(-r*0.8, -r*1.5, -r*0.7, -r*1.5);
+      c.quadraticCurveTo(-r*0.3, -r*1.0, -r*0.2, -r*0.75);
+      // 中央の葉
+      c.quadraticCurveTo(0, -r*1.7, r*0.1, -r*1.7);
+      c.quadraticCurveTo(r*0.2, -r*1.0, r*0.2, -r*0.75);
+      // 右の葉
+      c.quadraticCurveTo(r*0.8, -r*1.5, r*0.7, -r*1.5);
+      c.quadraticCurveTo(r*0.4, -r*0.9, r*0.5, -r*0.6);
+      c.closePath();
+      c.fill();
+    }
+
+    // 9: メロン
+    function drawMelon(c, r, type) {
+      // メロンベース
+      const grad = c.createRadialGradient(-r*0.2, -r*0.2, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#C7F9CC');
+      grad.addColorStop(0.7, type.color);
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+
+      c.beginPath();
+      c.arc(0, 0, r, 0, Math.PI*2);
+      c.fill();
+
+      // メロンの高級感あるアミメ模様 (複雑すぎない美しいデザイン)
+      c.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      c.lineWidth = 2.5;
+      c.save();
+      c.beginPath();
+      c.arc(0, 0, r - 2, 0, Math.PI*2);
+      c.clip();
+
+      // メッシュ描画
+      c.beginPath();
+      // 同心円状のカーブを重ねて美しいネットにする
+      for (let offset = -r; offset <= r; offset += r*0.4) {
+        c.arc(offset, 0, r * 0.8, 0, Math.PI*2);
+        c.arc(0, offset, r * 0.8, 0, Math.PI*2);
+      }
+      c.stroke();
+      c.restore();
+
+      // くるくる巻きついたT字型のつる
+      c.strokeStyle = '#52B788';
+      c.lineWidth = 6;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(0, -r);
+      c.lineTo(0, -r*1.25); // 縦軸
+      c.stroke();
+
+      // 左右にカールする横つる
+      c.beginPath();
+      c.moveTo(0, -r*1.25);
+      c.quadraticCurveTo(-r*0.3, -r*1.4, -r*0.3, -r*1.1);
+      c.moveTo(0, -r*1.25);
+      c.quadraticCurveTo(r*0.3, -r*1.1, r*0.3, -r*1.35);
+      c.stroke();
+    }
+
+    // 10: スイカ
+    function drawWatermelon(c, r, type) {
+      // 豊かなスイカグリーン
+      const grad = c.createRadialGradient(-r*0.3, -r*0.3, r*0.1, 0, 0, r);
+      grad.addColorStop(0, '#4AD66D');
+      grad.addColorStop(0.6, type.color);
+      grad.addColorStop(1, type.secondary);
+      c.fillStyle = grad;
+
+      c.beginPath();
+      c.arc(0, 0, r, 0, Math.PI*2);
+      c.fill();
+
+      // スイカのギザギザ縞模様 (波線)
+      c.strokeStyle = '#14361B';
+      c.lineWidth = r * 0.12;
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
+
+      // 4本の縦じま
+      const stripesX = [-r*0.6, -r*0.2, r*0.2, r*0.6];
+      stripesX.forEach(baseX => {
+        c.beginPath();
+        // ギザギザ縦断パス
+        let currY = -Math.sqrt(r*r - baseX*baseX) + 10;
+        let endY = Math.sqrt(r*r - baseX*baseX) - 10;
+        
+        c.moveTo(baseX, currY);
+        let step = (endY - currY) / 10;
+        for (let j = 1; j <= 10; j++) {
+          const targetY = currY + j * step;
+          const wobble = (j % 2 === 0 ? 8 : -8) * (1 - Math.abs(targetY)/r); // 端っこほど揺れを小さく
+          c.lineTo(baseX + wobble, targetY);
+        }
+        c.stroke();
+      });
+
+      // 黄緑の艶
+      c.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      c.beginPath();
+      c.ellipse(-r*0.5, -r*0.4, r*0.25, r*0.1, Math.PI/4, 0, Math.PI*2);
+      c.fill();
+    }
+
+    // --- フルーツたちの超かわいい顔面システム ---
+    function drawFruitFace(c, r, custom) {
+      // フルーツのサイズが小さいときは顔を少し大きめにスケーリングして見やすくする
+      const faceScale = r < 25 ? 1.25 : 1.0;
+      c.save();
+      c.scale(faceScale, faceScale);
+
+      const eyeOffset = r * 0.35; // 目の左右の間隔
+      const eyeY = -r * 0.05;      // 目の高さ
+      const eyeSize = Math.max(r * 0.12, 3); // 目の最低サイズ
+
+      // ほっぺのチーク (すべての表情で共通のぷにぷにピンク)
+      c.fillStyle = 'rgba(255, 105, 120, 0.55)';
+      c.beginPath();
+      c.arc(-eyeOffset * 1.2, eyeY + r*0.15, eyeSize * 0.9, 0, Math.PI*2);
+      c.arc(eyeOffset * 1.2, eyeY + r*0.15, eyeSize * 0.9, 0, Math.PI*2);
+      c.fill();
+
+      // まばたき中、あるいはにっこり(happy)顔のとき
+      const isBlinking = custom.blinkTimer < 8 && custom.blinkTimer > 0;
+      
+      c.strokeStyle = '#3D2A2D';
+      c.lineWidth = Math.max(r * 0.06, 2.5);
+      c.lineCap = 'round';
+
+      if (custom.face === 'happy') {
+        // ニコニコの目 (> <)
+        drawHappyEyes(c, eyeOffset, eyeY, eyeSize);
+        // 大きな笑顔
+        drawMouthSmile(c, r, eyeY);
+      } else if (isBlinking) {
+        // まばたき (一文字の細い横線)
+        c.beginPath();
+        c.moveTo(-eyeOffset - eyeSize, eyeY);
+        c.lineTo(-eyeOffset + eyeSize, eyeY);
+        c.moveTo(eyeOffset - eyeSize, eyeY);
+        c.lineTo(eyeOffset + eyeSize, eyeY);
+        c.stroke();
+
+        // 控えめなスマイル口
+        drawMouthMini(c, r, eyeY);
+      } else if (custom.face === 'scared') {
+        // 落下中などのビックリお目々 (縦長の大きな楕円、白目なしのうるうる)
+        c.fillStyle = '#3D2A2D';
+        c.beginPath();
+        c.ellipse(-eyeOffset, eyeY, eyeSize * 0.9, eyeSize * 1.3, 0, 0, Math.PI*2);
+        c.ellipse(eyeOffset, eyeY, eyeSize * 0.9, eyeSize * 1.3, 0, 0, Math.PI*2);
+        c.fill();
+
+        // 目の中の輝き
+        c.fillStyle = '#FFFFFF';
+        c.beginPath();
+        c.arc(-eyeOffset - eyeSize*0.2, eyeY - eyeSize*0.4, eyeSize*0.3, 0, Math.PI*2);
+        c.arc(eyeOffset - eyeSize*0.2, eyeY - eyeSize*0.4, eyeSize*0.3, 0, Math.PI*2);
+        c.fill();
+
+        // 小さな丸い「お」の口
+        c.fillStyle = '#3D2A2D';
+        c.beginPath();
+        c.arc(0, eyeY + r*0.22, eyeSize * 0.65, 0, Math.PI*2);
+        c.fill();
+      } else {
+        // 通常のウルウル可愛いお目々
+        c.fillStyle = '#3D2A2D';
+        c.beginPath();
+        c.arc(-eyeOffset, eyeY, eyeSize, 0, Math.PI*2);
+        c.arc(eyeOffset, eyeY, eyeSize, 0, Math.PI*2);
+        c.fill();
+
+        // 少女マンガ風ハイライト（左上と右下に白い光）
+        c.fillStyle = '#FFFFFF';
+        c.beginPath();
+        // 主ハイライト
+        c.arc(-eyeOffset - eyeSize*0.3, eyeY - eyeSize*0.3, eyeSize * 0.38, 0, Math.PI*2);
+        c.arc(eyeOffset - eyeSize*0.3, eyeY - eyeSize*0.3, eyeSize * 0.38, 0, Math.PI*2);
+        // 副ハイライト（うるうる感アップ）
+        c.arc(-eyeOffset + eyeSize*0.4, eyeY + eyeSize*0.4, eyeSize * 0.18, 0, Math.PI*2);
+        c.arc(eyeOffset + eyeSize*0.4, eyeY + eyeSize*0.4, eyeSize * 0.18, 0, Math.PI*2);
+        c.fill();
+
+        // 口
+        drawMouthMini(c, r, eyeY);
+      }
+
+      c.restore();
+    }
+
+    // にっこりハッピーお目々 (> <)
+    function drawHappyEyes(c, offset, y, size) {
+      c.beginPath();
+      // 左の「>」
+      c.moveTo(-offset - size, y - size * 0.4);
+      c.lineTo(-offset, y + size * 0.3);
+      c.lineTo(-offset - size, y + size * 0.8);
+      // 右の「<」
+      c.moveTo(offset + size, y - size * 0.4);
+      c.lineTo(offset, y + size * 0.3);
+      c.lineTo(offset + size, y + size * 0.8);
+      c.stroke();
+    }
+
+    // 普通のときの控えめ微笑み口 (w型、あるいは逆円弧)
+    function drawMouthMini(c, r, eyeY) {
+      c.save();
+      c.strokeStyle = '#3D2A2D';
+      c.lineWidth = Math.max(r * 0.05, 2.5);
+      c.lineCap = 'round';
+      c.beginPath();
+      // 小さな微笑み
+      c.arc(0, eyeY + r*0.1, r*0.12, 0.1 * Math.PI, 0.9 * Math.PI);
+      c.stroke();
+      c.restore();
+    }
+
+    // にっこり時の大きな開いた笑顔
+    function drawMouthSmile(c, r, eyeY) {
+      c.save();
+      c.fillStyle = '#FF4D6D';
+      c.strokeStyle = '#3D2A2D';
+      c.lineWidth = Math.max(r * 0.05, 2.5);
+      c.lineJoin = 'round';
+      
+      const width = r * 0.28;
+      const topY = eyeY + r * 0.15;
+      const bottomY = eyeY + r * 0.42;
+
+      c.beginPath();
+      c.moveTo(-width, topY);
+      // 口の上線
+      c.lineTo(width, topY);
+      // 口の深み（舌の赤さが見える半円）
+      c.bezierCurveTo(width, bottomY, -width, bottomY, -width, topY);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      // 小さな白い前歯をすこしのぞかせる
+      c.fillStyle = '#FFFFFF';
+      c.beginPath();
+      c.rect(-width * 0.4, topY + 1.5, width * 0.8, r * 0.06);
+      c.fill();
+
+      c.restore();
+    }
+
+    // --- パーティクル管理 ---
+    function updateAndDrawParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // 重力
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // --- マージ時のスコアポップアップ管理 ---
+    function updateAndDrawPopups() {
+      for (let i = popups.length - 1; i >= 0; i--) {
+        const p = popups[i];
+        p.y += p.vy;
+        p.alpha -= 0.02;
+        p.scale += 0.01;
+
+        if (p.alpha <= 0) {
+          popups.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = '#5D4347';
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 4;
+        ctx.font = `900 ${Math.round(18 * p.scale)}px 'M PLUS Rounded 1c'`;
+        ctx.textAlign = 'center';
+        // ふちどり
+        ctx.strokeText(p.text, p.x, p.y);
+        ctx.fillText(p.text, p.x, p.y);
+        ctx.restore();
+      }
+    }
+
+    // 起動
+    window.onload = () => {
+      init();
+    };
+  </script>
+</body>
+</html>
